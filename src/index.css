@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-zen-matcha: #889D35;
+    --color-zen-sand: #D2C0A7;
+    --color-zen-linen: #F8F5F1;
+    --color-zen-charcoal: #3C3C32;
+    --color-zen-moss: #6E8027;
+  }
+
+  body {
+    background-color: #F8F5F1;
+    color: #3C3C32;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Custom Zen Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F8F5F1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D2C0A7;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #889D35;
+}
+
+/* Safe Area Inset Support for Mobile Notch & Home Indicators */
+.safe-area-pt {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}

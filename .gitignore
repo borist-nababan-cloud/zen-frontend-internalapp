@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production build & cache
+dist/
+dist-ssr/
+build/
+.cache/
+
+# Environment & credentials (DO NOT COMMIT)
+.env
+.env.*
+!.env.example
+
+# Database & SQL files
+*.sql
+
+# Internal project documentation (Sensitive architectural summaries)
+docs/
+docs/**
+
+# Internal antigravity IDE metadata
+.antigraviy/
+.antigravity/
+
+# Logs & temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+*.bak
+*.tmp
+
+# Editor & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
