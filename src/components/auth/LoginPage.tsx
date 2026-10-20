@@ -269,6 +269,27 @@ export const LoginPage: React.FC = () => {
           <p className="text-[11px] text-zen-charcoal/50">
             Aman • Terenkripsi • Khusus Staf Zen Family Spa
           </p>
+
+          {/* Legal Links for Google OAuth Verification */}
+          <div className="flex items-center justify-center space-x-3 text-[11px] text-zen-charcoal/60 pt-2">
+            <a
+              href="https://tos.zenfamilyspa.id/privacy-policy.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zen-moss underline transition-colors"
+            >
+              Privacy Policy
+            </a>
+            <span>•</span>
+            <a
+              href="https://tos.zenfamilyspa.id/terms-of-service.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-zen-moss underline transition-colors"
+            >
+              Terms of Service
+            </a>
+          </div>
         </div>
       </div>
     </div>
