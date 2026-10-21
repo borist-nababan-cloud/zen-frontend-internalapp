@@ -9,7 +9,13 @@ export interface UserProfile {
   avatar_url: string;
   role: string;
   role_user: number;
+  kodekaryawan?: string;
   kode_outlet?: string;
+  departemen?: string;
+  approval_status: 'UNLINKED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+  is_active: boolean;
+  rejected_reason?: string | null;
+  approved_at?: string | null;
 }
 
 interface AuthContextType {
@@ -21,6 +27,8 @@ interface AuthContextType {
   signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  linkEmployeeCode: (kodekaryawan: string) => Promise<{ success: boolean; message: string; karyawan?: any }>;
+  resetEmployeeLink: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,26 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (currentUser: User) => {
     try {
-      // 1. Try public.profiles first
-      const { data: profData, error: profError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .maybeSingle();
-
-      if (profData && !profError) {
-        setProfile({
-          id: profData.id,
-          email: profData.email || currentUser.email || '',
-          full_name: profData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
-          avatar_url: profData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
-          role: profData.role || 'operational_staff',
-          role_user: profData.role_user || 12,
-        });
-        return;
-      }
-
-      // 2. Fallback to public.users_profile
+      // 1. Fetch from public.users_profile (primary profile store)
       const { data: uProfData, error: uProfError } = await supabase
         .from('users_profile')
         .select('*')
@@ -67,7 +56,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           avatar_url: uProfData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
           role: 'operational_staff',
           role_user: uProfData.role_user || uProfData.user_role || 12,
-          kode_outlet: uProfData.kode_outlet || '111',
+          kodekaryawan: uProfData.kodekaryawan || undefined,
+          kode_outlet: uProfData.kode_outlet || undefined,
+          departemen: uProfData.departemen || undefined,
+          approval_status: (uProfData.approval_status as any) || 'UNLINKED',
+          is_active: !!uProfData.is_active,
+          rejected_reason: uProfData.rejected_reason,
+          approved_at: uProfData.approved_at,
+        });
+        return;
+      }
+
+      // 2. Fallback to public.profiles
+      const { data: profData, error: profError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .maybeSingle();
+
+      if (profData && !profError) {
+        setProfile({
+          id: profData.id,
+          email: profData.email || currentUser.email || '',
+          full_name: profData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
+          avatar_url: profData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
+          role: profData.role || 'operational_staff',
+          role_user: profData.role_user || 12,
+          kodekaryawan: profData.kodekaryawan || undefined,
+          departemen: profData.departemen || undefined,
+          approval_status: (profData.approval_status as any) || 'UNLINKED',
+          is_active: !!profData.is_active,
+          rejected_reason: profData.rejected_reason,
+          approved_at: profData.approved_at,
         });
         return;
       }
@@ -80,10 +100,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
         role: 'operational_staff',
         role_user: 12,
+        approval_status: 'UNLINKED',
+        is_active: false,
       });
     } catch (err) {
       console.warn('Error fetching user profile:', err);
-      // Fallback
       setProfile({
         id: currentUser.id,
         email: currentUser.email || '',
@@ -91,6 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
         role: 'operational_staff',
         role_user: 12,
+        approval_status: 'UNLINKED',
+        is_active: false,
       });
     }
   };
@@ -172,6 +195,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const linkEmployeeCode = async (kodekaryawan: string) => {
+    try {
+      const { data, error } = await supabase.rpc('link_employee_code', {
+        p_kodekaryawan: kodekaryawan.trim(),
+      });
+
+      if (error) {
+        return {
+          success: false,
+          message: error.message || 'Gagal memverifikasi kode karyawan.',
+        };
+      }
+
+      if (data && data.success) {
+        await refreshProfile();
+        return {
+          success: true,
+          message: data.message,
+          karyawan: data.karyawan,
+        };
+      }
+
+      return {
+        success: false,
+        message: data?.message || 'Kode karyawan tidak dapat diverifikasi.',
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Terjadi kesalahan sistem saat menghubungi server.',
+      };
+    }
+  };
+
+  const resetEmployeeLink = async () => {
+    if (!user) return;
+    try {
+      await supabase
+        .from('users_profile')
+        .update({
+          approval_status: 'UNLINKED',
+          kodekaryawan: null,
+          rejected_reason: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('uid', user.id);
+
+      await refreshProfile();
+    } catch (e) {
+      console.error('Error resetting employee link:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -183,6 +259,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signInWithEmailOtp,
         signOut,
         refreshProfile,
+        linkEmployeeCode,
+        resetEmployeeLink,
       }}
     >
       {children}

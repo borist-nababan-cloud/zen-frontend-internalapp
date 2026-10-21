@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LogIn, LogOut, User as UserIcon, Shield, ChevronDown } from 'lucide-react';
+import { LogIn, LogOut, Shield, ChevronDown, Users, Home } from 'lucide-react';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  currentTab?: string;
+  onTabChange?: (tab: string) => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
   const { user, profile, loading, signInWithGoogle, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navbarTitle = import.meta.env.VITE_NAVBAR_TITLE || 'ZEN OPERATIONAL';
   const appVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
+
+  const canManageUsers = profile?.role_user === 8 || profile?.role_user === 6;
 
   const getInitials = (name: string) => {
     return name
@@ -18,25 +25,31 @@ export const Header: React.FC = () => {
       .toUpperCase();
   };
 
+  const getRoleLabel = () => {
+    if (profile?.role_user === 8) return 'SUPERUSER (Role 8)';
+    if (profile?.role_user === 6) return `ADMIN GERAI (Outlet ${profile.kode_outlet || ''})`;
+    if (profile?.role_user === 1) return 'ADMIN HOLDING (Role 1)';
+    return `OPERATIONAL STAFF (Role ${profile?.role_user ?? 12})`;
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-zen-paper/95 backdrop-blur-md border-b border-zen-border shadow-sm safe-area-pt">
+    <header className="sticky top-0 z-40 bg-zen-paper/95 backdrop-blur-md border-b border-zen-border shadow-xs safe-area-pt">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left: Branding & Title */}
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-zen-matcha flex items-center justify-center shadow-sm overflow-hidden p-1">
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onTabChange?.('dashboard')}>
+          <div className="w-10 h-10 rounded-xl bg-zen-matcha flex items-center justify-center shadow-xs overflow-hidden p-1">
             <img
               src="/Logo150x150.png"
               alt="Zen Logo"
               className="w-full h-full object-contain"
               onError={(e) => {
-                // Fallback icon if image not available
                 (e.target as HTMLElement).style.display = 'none';
               }}
             />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h1 className="font-bold text-zen-charcoal tracking-wide text-base sm:text-lg">
+              <h1 className="font-bold text-zen-charcoal tracking-wide text-base sm:text-lg font-serif">
                 {navbarTitle}
               </h1>
               <span className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-semibold bg-zen-matcha/15 text-zen-moss rounded-full">
@@ -97,7 +110,7 @@ export const Header: React.FC = () => {
                     className="fixed inset-0 z-40"
                     onClick={() => setDropdownOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-white border border-zen-border shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-zen-border shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="px-4 py-3 border-b border-zen-border/60">
                       <p className="text-sm font-semibold text-zen-charcoal">
                         {profile?.full_name}
@@ -105,20 +118,55 @@ export const Header: React.FC = () => {
                       <p className="text-xs text-zen-charcoal/60 truncate">
                         {profile?.email}
                       </p>
-                      <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-zen-matcha/15 text-zen-moss">
-                        OPERATIONAL STAFF (Role {profile?.role_user ?? 12})
+                      <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-zen-matcha/15 text-zen-moss">
+                        {getRoleLabel()}
                       </div>
+                      {profile?.kodekaryawan && (
+                        <p className="text-[11px] text-zen-charcoal/60 mt-1">
+                          Kode: <span className="font-mono font-semibold">{profile.kodekaryawan}</span>
+                        </p>
+                      )}
                     </div>
 
                     <div className="py-1">
                       <button
                         onClick={() => {
                           setDropdownOpen(false);
+                          onTabChange?.('dashboard');
+                        }}
+                        className={`w-full flex items-center px-4 py-2.5 text-xs font-semibold hover:bg-zen-linen transition-colors ${
+                          currentTab === 'dashboard' ? 'text-zen-moss bg-zen-linen/60' : 'text-zen-charcoal'
+                        }`}
+                      >
+                        <Home className="w-4 h-4 mr-2.5 text-zen-moss" />
+                        Beranda Operasional
+                      </button>
+
+                      {canManageUsers && (
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            onTabChange?.('user-management');
+                          }}
+                          className={`w-full flex items-center px-4 py-2.5 text-xs font-semibold hover:bg-zen-linen transition-colors ${
+                            currentTab === 'user-management' ? 'text-zen-moss bg-zen-linen/60' : 'text-zen-charcoal'
+                          }`}
+                        >
+                          <Users className="w-4 h-4 mr-2.5 text-zen-moss" />
+                          Manajemen User & Staf
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="border-t border-zen-border/60 pt-1">
+                      <button
+                        onClick={() => {
+                          setDropdownOpen(false);
                           signOut();
                         }}
-                        className="w-full flex items-center px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="w-full flex items-center px-4 py-2.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
                       >
-                        <LogOut className="w-4 h-4 mr-2" />
+                        <LogOut className="w-4 h-4 mr-2.5" />
                         Keluar (Sign Out)
                       </button>
                     </div>
@@ -129,7 +177,7 @@ export const Header: React.FC = () => {
           ) : (
             <button
               onClick={() => signInWithGoogle()}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white font-medium text-xs sm:text-sm shadow-sm transition-all active:scale-95"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white font-medium text-xs sm:text-sm shadow-xs transition-all active:scale-95"
             >
               <LogIn className="w-4 h-4" />
               <span>Login Google</span>

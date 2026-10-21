@@ -17,7 +17,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({
   return (
     <div className="min-h-screen bg-zen-linen text-zen-charcoal flex flex-col">
       {/* 1. Sticky Header */}
-      <Header />
+      <Header currentTab={currentTab} onTabChange={onTabChange} />
 
       {/* 2. Body: Desktop Sidebar + Scrollable Main Content Frame */}
       <div className="flex-1 flex max-w-7xl w-full mx-auto">
