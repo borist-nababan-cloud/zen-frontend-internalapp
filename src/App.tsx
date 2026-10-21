@@ -53,19 +53,26 @@ const AppContent: React.FC = () => {
   }
 
   // 3. Approval Workflow Gates:
-  // Step A: Not linked to employee code
-  if (profile?.approval_status === 'UNLINKED') {
-    return <EmployeeLinkScreen />;
-  }
+  const isSuperuser = profile?.role_user === 8;
+  const isOutletAdmin = profile?.role_user === 6;
+  const canManageUsers = isSuperuser || isOutletAdmin;
 
-  // Step B: Linked, waiting for admin approval
-  if (profile?.approval_status === 'PENDING') {
-    return <PendingApprovalScreen />;
-  }
+  // SUPERUSER (Role 8) does not need to link to HRD employee code or await outlet approval
+  if (!isSuperuser) {
+    // Step A: Not linked to employee code
+    if (profile?.approval_status === 'UNLINKED') {
+      return <EmployeeLinkScreen />;
+    }
 
-  // Step C: Rejected by admin
-  if (profile?.approval_status === 'REJECTED') {
-    return <RejectedScreen />;
+    // Step B: Linked, waiting for admin approval
+    if (profile?.approval_status === 'PENDING') {
+      return <PendingApprovalScreen />;
+    }
+
+    // Step C: Rejected by admin
+    if (profile?.approval_status === 'REJECTED') {
+      return <RejectedScreen />;
+    }
   }
 
   // Step D: Approved, but deactivated / inactive
@@ -142,10 +149,6 @@ const AppContent: React.FC = () => {
   }
 
   // 4. Authenticated & Approved Application Shell
-  const isSuperuser = profile?.role_user === 8;
-  const isOutletAdmin = profile?.role_user === 6;
-  const canManageUsers = isSuperuser || isOutletAdmin;
-
   return (
     <MainLayout currentTab={currentTab} onTabChange={setCurrentTab}>
       {/* Tab: User Management (Role 8 & Role 6 only) */}
