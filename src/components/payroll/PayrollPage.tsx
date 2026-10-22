@@ -133,7 +133,7 @@ export const PayrollPage: React.FC = () => {
         });
       }
 
-      // 2. Fetch distinct available periods for this employee
+      // 2. Fetch distinct available periods for this employee (ordered newest first)
       const { data: periodsData, error: periodsError } = await supabase
         .from('ot_hrd_karyawan_payroll_details')
         .select('payrollperiode')
@@ -145,10 +145,10 @@ export const PayrollPage: React.FC = () => {
       }
 
       if (periodsData && periodsData.length > 0) {
-        // Filter unique non-null periods
+        // Filter unique non-null periods and limit strictly to the last 4 periods
         const uniquePeriods = Array.from(
           new Set(periodsData.map((p) => p.payrollperiode).filter(Boolean))
-        ) as string[];
+        ).slice(0, 4) as string[];
 
         setAvailablePeriods(uniquePeriods);
 
@@ -268,7 +268,7 @@ export const PayrollPage: React.FC = () => {
           </div>
           <div>
             <h2 className="text-base font-bold text-zen-charcoal font-serif">Slip Gaji & Komisi</h2>
-            <p className="text-xs text-zen-charcoal/60">Rincian resmi penggajian staf Zen</p>
+            <p className="text-xs text-zen-charcoal/60">Rincian resmi penggajian staf Zen (4 periode terakhir)</p>
           </div>
         </div>
 
