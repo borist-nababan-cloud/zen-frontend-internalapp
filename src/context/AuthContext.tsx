@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 
 export interface UserProfile {
   id: string;
@@ -22,11 +22,13 @@ export interface UserProfile {
   approved_at?: string | null;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
-  profile: UserProfile | null;
   session: Session | null;
-  loading: boolean;
+  profile: UserProfile | null;
+  isLoading: boolean;
+  loading: boolean; // Backward compatibility alias
+  isAuthenticated: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -42,9 +44,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const isInitialCheckDone = useRef<boolean>(false);
 
-  const fetchProfile = async (currentUser: User) => {
+  const fetchProfile = useCallback(async (currentUser: User) => {
     try {
       // 1. Fetch from public.users_profile (primary profile store)
       const { data: uProfData, error: uProfError } = await supabase
@@ -77,8 +80,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile({
           id: uProfData.uid,
           email: uProfData.email || currentUser.email || '',
-          full_name: namakaryawan || uProfData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
-          avatar_url: uProfData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
+          full_name:
+            namakaryawan ||
+            uProfData.full_name ||
+            currentUser.user_metadata?.full_name ||
+            currentUser.user_metadata?.name ||
+            'Staff Member',
+          avatar_url:
+            uProfData.avatar_url ||
+            currentUser.user_metadata?.avatar_url ||
+            currentUser.user_metadata?.picture ||
+            '',
           role: roleNameStr || 'operational_staff',
           role_user: roleUserNum,
           user_role: roleUserNum,
@@ -107,10 +119,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile({
           id: profData.id,
           email: profData.email || currentUser.email || '',
-          full_name: profData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
-          avatar_url: profData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
+          full_name:
+            profData.full_name ||
+            currentUser.user_metadata?.full_name ||
+            currentUser.user_metadata?.name ||
+            'Staff Member',
+          avatar_url:
+            profData.avatar_url ||
+            currentUser.user_metadata?.avatar_url ||
+            currentUser.user_metadata?.picture ||
+            '',
           role: profData.role || 'operational_staff',
           role_user: profData.role_user || 12,
+          user_role: profData.role_user || 12,
           kodekaryawan: profData.kodekaryawan || undefined,
           departemen: profData.departemen || undefined,
           approval_status: (profData.approval_status as any) || 'UNLINKED',
@@ -125,10 +146,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile({
         id: currentUser.id,
         email: currentUser.email || '',
-        full_name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Staff Member',
-        avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
+        full_name:
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.name ||
+          currentUser.email?.split('@')[0] ||
+          'Staff Member',
+        avatar_url:
+          currentUser.user_metadata?.avatar_url ||
+          currentUser.user_metadata?.picture ||
+          '',
         role: 'operational_staff',
         role_user: 12,
+        user_role: 12,
         approval_status: 'UNLINKED',
         is_active: false,
       });
@@ -137,48 +166,109 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile({
         id: currentUser.id,
         email: currentUser.email || '',
-        full_name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
-        avatar_url: currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
+        full_name:
+          currentUser.user_metadata?.full_name ||
+          currentUser.user_metadata?.name ||
+          'Staff Member',
+        avatar_url:
+          currentUser.user_metadata?.avatar_url ||
+          currentUser.user_metadata?.picture ||
+          '',
         role: 'operational_staff',
         role_user: 12,
+        user_role: 12,
         approval_status: 'UNLINKED',
         is_active: false,
       });
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // Initial session retrieval
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user);
-      }
-      setLoading(false);
-    });
+    let isMounted = true;
 
-    // Real-time auth state changes listener
+    // 1. Initial Session Check to prevent initial UI flicker
+    const initializeSession = async () => {
+      try {
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.warn('Session retrieval error:', error.message);
+        }
+
+        if (isMounted) {
+          if (initialSession?.user) {
+            setSession(initialSession);
+            setUser(initialSession.user);
+            await fetchProfile(initialSession.user);
+          } else {
+            setSession(null);
+            setUser(null);
+            setProfile(null);
+          }
+        }
+      } catch (e) {
+        console.error('Initial session check failed:', e);
+      } finally {
+        if (isMounted) {
+          isInitialCheckDone.current = true;
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initializeSession();
+
+    // 2. Real-time auth state listener (LOGIN, SIGN_OUT, TOKEN_REFRESHED)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user);
-      } else {
-        setProfile(null);
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, currentSession: Session | null) => {
+      if (!isMounted) return;
+
+      // Handle specific auth lifecycle events
+      switch (event) {
+        case 'SIGNED_IN':
+        case 'TOKEN_REFRESHED':
+        case 'USER_UPDATED':
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          if (currentSession?.user) {
+            await fetchProfile(currentSession.user);
+          }
+          break;
+
+        case 'SIGNED_OUT':
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          break;
+
+        case 'INITIAL_SESSION':
+          // If already handled by initializeSession, do not overwrite unless session changed
+          if (currentSession?.user && (!user || user.id !== currentSession.user.id)) {
+            setSession(currentSession);
+            setUser(currentSession.user);
+            await fetchProfile(currentSession.user);
+          }
+          break;
+
+        default:
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          break;
       }
-      setLoading(false);
+
+      if (isInitialCheckDone.current) {
+        setIsLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const signInWithGoogle = async () => {
-    setLoading(true);
+    setIsLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -191,7 +281,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (error) {
       console.error('Google Sign-In Error:', error.message);
-      setLoading(false);
+      setIsLoading(false);
       throw error;
     }
   };
@@ -207,15 +297,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Sign Out Error:', error.message);
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign Out Error:', error.message);
+      }
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+      setIsLoading(false);
     }
-    setUser(null);
-    setProfile(null);
-    setSession(null);
-    setLoading(false);
   };
 
   const refreshProfile = async () => {
@@ -305,9 +398,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        profile,
         session,
-        loading,
+        profile,
+        isLoading,
+        loading: isLoading, // Backward compatibility alias
+        isAuthenticated: !!user && !!session,
         signInWithGoogle,
         signInWithEmailOtp,
         signOut,
@@ -329,3 +424,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+export default AuthContext;
