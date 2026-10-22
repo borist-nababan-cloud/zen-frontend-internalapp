@@ -33,12 +33,8 @@ import {
  * Dashboard View
  */
 const DashboardView: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, isSuperuser, isOutletAdmin, canManageUsers, canViewPayroll } = useAuth();
   const navigate = useNavigate();
-
-  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
-  const isOutletAdmin = profile?.role_user === 6 || profile?.user_role === 6;
-  const canManageUsers = isSuperuser || isOutletAdmin;
 
   return (
     <div className="space-y-6">
@@ -293,10 +289,9 @@ const AppShellLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =
  * Non-Superusers must be approved and have a valid employee code.
  */
 const PayrollGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { profile } = useAuth();
-  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
+  const { isSuperuser, canViewPayroll } = useAuth();
 
-  if (isSuperuser) {
+  if (isSuperuser || !canViewPayroll) {
     return <Navigate to="/dashboard" replace />;
   }
 

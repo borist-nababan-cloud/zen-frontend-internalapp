@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Clock, RefreshCw, LogOut, CheckCircle2, Building2, Briefcase, Hash, User } from 'lucide-react';
+import { Clock, RefreshCw, LogOut, Building2, Briefcase, Hash, User } from 'lucide-react';
 
 export const PendingApprovalScreen: React.FC = () => {
   const { profile, refreshProfile, resetEmployeeLink, signOut } = useAuth();

@@ -8,15 +8,11 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
-  const { user, profile, loading, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, loading, canManageUsers, canViewPayroll, signInWithGoogle, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navbarTitle = import.meta.env.VITE_NAVBAR_TITLE || 'ZEN OPERATIONAL';
   const appVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
-
-  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
-  const canManageUsers = isSuperuser || profile?.role_user === 6 || profile?.user_role === 6;
-  const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
 
   const getInitials = (name: string) => {
     return name

@@ -8,16 +8,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => {
-  const { profile } = useAuth();
-
-  // Strict User Management check: Only Role 8 (SUPERUSER) & Role 6 (outlet_admin). Exclude Role 1 (admin_holding).
-  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
-  const canManageUsers = isSuperuser || profile?.role_user === 6 || profile?.user_role === 6;
-
-  // View Payroll Rule:
-  // Superuser (Role 8) does NOT see "View Payroll".
-  // Other roles (including Outlet Admin Role 6, Staff Role 12, etc.) can access if they have kodekaryawan and approval_status = 'APPROVED'.
-  const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
+  const { profile, isSuperuser, canManageUsers, canViewPayroll } = useAuth();
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-zen-border bg-zen-paper min-h-[calc(100vh-4rem)] p-4 justify-between">

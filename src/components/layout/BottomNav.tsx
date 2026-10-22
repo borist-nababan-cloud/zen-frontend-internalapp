@@ -8,10 +8,7 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
-  const { profile } = useAuth();
-  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
-  const canManageUsers = isSuperuser || profile?.role_user === 6 || profile?.user_role === 6;
-  const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
+  const { canManageUsers, canViewPayroll } = useAuth();
 
   const tabs = [
     { id: 'dashboard', label: 'Beranda', icon: Home },

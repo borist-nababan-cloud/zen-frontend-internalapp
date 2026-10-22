@@ -17,7 +17,6 @@ import {
   Hash,
   AlertTriangle,
   Clock,
-  Sparkles,
   Edit3,
   BadgeCheck,
   Unlink2,
@@ -55,7 +54,6 @@ export const UserManagementPage: React.FC = () => {
   const [users, setUsers] = useState<ManageableUser[]>([]);
   const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [callerRole, setCallerRole] = useState<number>(profile?.user_role || profile?.role_user || 12);
   const [callerOutlet, setCallerOutlet] = useState<string | null>(profile?.kode_outlet || null);
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -108,7 +106,6 @@ export const UserManagementPage: React.FC = () => {
       if (error) {
         setFeedback({ type: 'error', message: error.message || 'Gagal mengambil data pengguna.' });
       } else if (data && data.success) {
-        setCallerRole(data.caller_role);
         setCallerOutlet(data.caller_outlet);
         setUsers(data.users || []);
       } else {
@@ -573,7 +570,9 @@ export const UserManagementPage: React.FC = () => {
                           <h3 className="text-sm font-bold text-zen-charcoal truncate flex items-center">
                             {primaryName}
                             {hasOfficialName && (
-                              <BadgeCheck className="w-4 h-4 text-zen-moss ml-1 shrink-0" title="Terverifikasi HRD" />
+                              <span title="Terverifikasi HRD" className="inline-flex items-center">
+                                <BadgeCheck className="w-4 h-4 text-zen-moss ml-1 shrink-0" />
+                              </span>
                             )}
                           </h3>
 
