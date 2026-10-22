@@ -32,6 +32,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   linkEmployeeCode: (kodekaryawan: string) => Promise<{ success: boolean; message: string; karyawan?: any }>;
+  previewEmployeeCode: (kodekaryawan: string) => Promise<{ success: boolean; message?: string; karyawan?: any }>;
   resetEmployeeLink: () => Promise<void>;
 }
 
@@ -257,6 +258,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const previewEmployeeCode = async (kodekaryawan: string) => {
+    try {
+      const { data, error } = await supabase.rpc('preview_employee_code', {
+        p_kodekaryawan: kodekaryawan.trim(),
+      });
+
+      if (error) {
+        return {
+          success: false,
+          message: error.message || 'Gagal memeriksa kode karyawan.',
+        };
+      }
+
+      return data as { success: boolean; message?: string; karyawan?: any };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err.message || 'Terjadi kesalahan sistem saat menghubungi server.',
+      };
+    }
+  };
+
   const resetEmployeeLink = async () => {
     if (!user) return;
     try {
@@ -265,6 +288,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .update({
           approval_status: 'UNLINKED',
           kodekaryawan: null,
+          kode_outlet: null,
+          departemen: null,
           rejected_reason: null,
           updated_at: new Date().toISOString(),
         })
@@ -288,6 +313,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         refreshProfile,
         linkEmployeeCode,
+        previewEmployeeCode,
         resetEmployeeLink,
       }}
     >

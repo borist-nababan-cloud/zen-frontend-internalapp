@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Check,
   X,
-  Power,
   Building2,
   Briefcase,
   Hash,
@@ -21,6 +20,8 @@ import {
   Sparkles,
   Edit3,
   BadgeCheck,
+  Unlink2,
+  RotateCcw,
 } from 'lucide-react';
 
 interface RoleOption {
@@ -67,9 +68,12 @@ export const UserManagementPage: React.FC = () => {
   const [rejectingUser, setRejectingUser] = useState<ManageableUser | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Edit Role modal state (for APPROVED users)
+  // Edit Role modal state (for APPROVED users - Superuser only)
   const [editingRoleUser, setEditingRoleUser] = useState<ManageableUser | null>(null);
   const [newSelectedRole, setNewSelectedRole] = useState<number>(12);
+
+  // Unlink / Reset Kode Karyawan modal state
+  const [unlinkingUser, setUnlinkingUser] = useState<ManageableUser | null>(null);
 
   // Selected role for pending approval per user (Only Role 8 can modify)
   const [selectedPendingRoles, setSelectedPendingRoles] = useState<Record<string, number>>({});
@@ -203,27 +207,27 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  // Handle Toggle Active/Inactive
-  const handleToggleStatus = async (userItem: ManageableUser) => {
-    const nextStatus = !userItem.is_active;
-    setActionLoading(userItem.uid);
+  // Handle Unlink / Reset Kode Karyawan Confirm
+  const handleUnlinkConfirm = async () => {
+    if (!unlinkingUser) return;
+    setActionLoading(unlinkingUser.uid);
     setFeedback(null);
     try {
-      const { data, error } = await supabase.rpc('toggle_user_status', {
-        p_target_uid: userItem.uid,
-        p_is_active: nextStatus,
+      const { data, error } = await supabase.rpc('unlink_employee_user', {
+        p_target_uid: unlinkingUser.uid,
       });
 
       if (error) {
         setFeedback({ type: 'error', message: error.message });
       } else if (data?.success) {
         setFeedback({ type: 'success', message: data.message });
+        setUnlinkingUser(null);
         await fetchUsers();
       } else {
-        setFeedback({ type: 'error', message: data?.message || 'Gagal mengubah status pengguna.' });
+        setFeedback({ type: 'error', message: data?.message || 'Gagal melepas tautan karyawan.' });
       }
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Kesalahan saat mengubah status user.' });
+      setFeedback({ type: 'error', message: err.message || 'Kesalahan saat melepas tautan user.' });
     } finally {
       setActionLoading(null);
     }
@@ -238,8 +242,8 @@ export const UserManagementPage: React.FC = () => {
     return users.filter((u) => u.approval_status === 'APPROVED');
   }, [users]);
 
-  const activeUsersCount = useMemo(() => {
-    return users.filter((u) => u.is_active).length;
+  const linkedUsersCount = useMemo(() => {
+    return users.filter((u) => !!u.kodekaryawan).length;
   }, [users]);
 
   // Unique outlets for filter
@@ -272,8 +276,8 @@ export const UserManagementPage: React.FC = () => {
 
       // Status filter (on all tab)
       if (activeTab === 'all' && statusFilter !== 'all') {
-        if (statusFilter === 'active' && !u.is_active) return false;
-        if (statusFilter === 'inactive' && u.is_active) return false;
+        if (statusFilter === 'approved' && u.approval_status !== 'APPROVED') return false;
+        if (statusFilter === 'pending' && u.approval_status !== 'PENDING') return false;
         if (statusFilter === 'rejected' && u.approval_status !== 'REJECTED') return false;
         if (statusFilter === 'unlinked' && u.approval_status !== 'UNLINKED') return false;
       }
@@ -330,8 +334,8 @@ export const UserManagementPage: React.FC = () => {
             </div>
             <p className="text-xs text-zen-charcoal/60 mt-0.5">
               {isSuperuser
-                ? 'Wewenang penuh mengelola, menyetujui, dan mengubah role pengguna dari seluruh gerai Zen Family Spa.'
-                : `Wewenang mengelola dan menyetujui staf khusus gerai Anda (${callerOutlet}).`}
+                ? 'Wewenang penuh mengelola, menyetujui, mengubah role, dan melepas tautan kode karyawan dari seluruh gerai.'
+                : `Wewenang mengelola staf khusus gerai Anda (${callerOutlet}).`}
             </p>
           </div>
         </div>
@@ -363,8 +367,8 @@ export const UserManagementPage: React.FC = () => {
             <UserCheck className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-medium text-zen-charcoal/50">Staf Aktif</p>
-            <p className="text-lg font-bold text-emerald-600">{activeUsersCount}</p>
+            <p className="text-[11px] font-medium text-zen-charcoal/50">Staf Tertaut HRD</p>
+            <p className="text-lg font-bold text-emerald-600">{linkedUsersCount}</p>
           </div>
         </div>
 
@@ -475,8 +479,8 @@ export const UserManagementPage: React.FC = () => {
               className="px-2.5 py-1.5 rounded-lg border border-zen-border bg-zen-linen/40 text-zen-charcoal font-medium text-xs outline-none"
             >
               <option value="all">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Nonaktif</option>
+              <option value="approved">Disetujui (Approved)</option>
+              <option value="pending">Menunggu Verifikasi</option>
               <option value="rejected">Ditolak</option>
               <option value="unlinked">Belum Taut Kode</option>
             </select>
@@ -558,7 +562,7 @@ export const UserManagementPage: React.FC = () => {
                         )}
                         <div
                           className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                            u.is_active ? 'bg-emerald-500' : 'bg-neutral-400'
+                            isApproved ? 'bg-emerald-500' : isPending ? 'bg-amber-500' : 'bg-neutral-400'
                           }`}
                         />
                       </div>
@@ -580,14 +584,8 @@ export const UserManagementPage: React.FC = () => {
                             </span>
                           )}
                           {isApproved && (
-                            <span
-                              className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                u.is_active
-                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : 'bg-neutral-100 text-neutral-600 border border-neutral-200'
-                              }`}
-                            >
-                              {u.is_active ? 'Aktif' : 'Nonaktif'}
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              Disetujui
                             </span>
                           )}
                           {isRejected && (
@@ -736,19 +734,16 @@ export const UserManagementPage: React.FC = () => {
                             </button>
                           )}
 
-                          {/* Toggle Active status button */}
-                          {isApproved && (
+                          {/* Tombol Lepas Tautan (Unlink / Reset Kode Karyawan) */}
+                          {u.kodekaryawan && (
                             <button
-                              onClick={() => handleToggleStatus(u)}
+                              onClick={() => setUnlinkingUser(u)}
                               disabled={isActionRunning}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 border transition-all ${
-                                u.is_active
-                                  ? 'bg-neutral-50 hover:bg-neutral-100 text-neutral-700 border-neutral-300'
-                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300'
-                              }`}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 transition-all"
+                              title="Lepas tautan kode karyawan agar staf dapat menautkan kode baru"
                             >
-                              <Power className="w-3 h-3" />
-                              <span>{u.is_active ? 'Nonaktifkan' : 'Aktifkan'}</span>
+                              <Unlink2 className="w-3 h-3" />
+                              <span>Lepas Tautan</span>
                             </button>
                           )}
                         </>
@@ -838,6 +833,55 @@ export const UserManagementPage: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold shadow-xs"
               >
                 {actionLoading === editingRoleUser.uid ? 'Menyimpan...' : 'Simpan Role Baru'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unlink / Reset Kode Karyawan Modal */}
+      {unlinkingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-zen-border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center space-x-3 text-amber-600">
+              <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-700">
+                <Unlink2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zen-charcoal font-serif">
+                  Lepas Tautan Kode Karyawan
+                </h3>
+                <p className="text-[11px] text-zen-charcoal/60">Reset kode karyawan agar dapat ditautkan ulang</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zen-charcoal/70 leading-relaxed">
+              Anda akan melepas tautan kode karyawan <strong>{unlinkingUser.kodekaryawan}</strong> dari akun{' '}
+              <strong>{unlinkingUser.namakaryawan || unlinkingUser.full_name}</strong> ({unlinkingUser.email}).
+            </p>
+
+            <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 space-y-1 leading-relaxed">
+              <p className="font-bold flex items-center">
+                <RotateCcw className="w-3.5 h-3.5 mr-1 text-amber-700" />
+                Dampak Aksi Ini:
+              </p>
+              <p>• Kode karyawan <strong>{unlinkingUser.kodekaryawan}</strong> seketika bebas di database dan dapat digunakan oleh karyawan yang berhak.</p>
+              <p>• Akun Google staf ini akan dikembalikan ke status <code>UNLINKED</code>, sehingga saat login berikutnya staf akan diminta memasukkan kode yang benar.</p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                onClick={() => setUnlinkingUser(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-zen-charcoal/70 hover:bg-zen-linen"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleUnlinkConfirm}
+                disabled={actionLoading === unlinkingUser.uid}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs"
+              >
+                {actionLoading === unlinkingUser.uid ? 'Memproses...' : 'Ya, Lepas Tautan'}
               </button>
             </div>
           </div>
