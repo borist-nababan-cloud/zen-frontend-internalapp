@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './components/auth/LoginPage';
 import { UserManagementPage } from './components/admin/UserManagementPage';
+import { PayrollPage } from './components/payroll/PayrollPage';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { PublicRoute } from './components/routing/PublicRoute';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
@@ -25,6 +26,7 @@ import {
   Briefcase,
   Hash,
   Shield,
+  Wallet,
 } from 'lucide-react';
 
 /**
@@ -93,13 +95,22 @@ const DashboardView: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 self-stretch sm:self-auto justify-end">
+        <div className="flex items-center space-x-2 self-stretch sm:self-auto justify-end flex-wrap gap-y-2">
+          {canViewPayroll && (
+            <button
+              onClick={() => navigate('/payroll')}
+              className="px-3.5 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-all active:scale-95"
+            >
+              <Wallet className="w-3.5 h-3.5" />
+              <span>View Payroll</span>
+            </button>
+          )}
           {canManageUsers && (
             <button
               onClick={() => navigate('/user-management')}
-              className="px-3.5 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-all active:scale-95"
+              className="px-3.5 py-2 rounded-xl bg-zen-sand/40 hover:bg-zen-sand/60 text-zen-charcoal text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-all active:scale-95 border border-zen-border"
             >
-              <Users className="w-3.5 h-3.5" />
+              <Users className="w-3.5 h-3.5 text-zen-moss" />
               <span>Manajemen User</span>
             </button>
           )}
@@ -111,24 +122,49 @@ const DashboardView: React.FC = () => {
       </div>
 
       {/* Modular Workspace Frame */}
-      <div className="bg-white rounded-3xl p-6 sm:p-10 border border-zen-border shadow-xs text-center space-y-4">
-        <div className="w-14 h-14 rounded-2xl bg-zen-linen flex items-center justify-center mx-auto text-zen-matcha border border-zen-border/70">
-          <Layers className="w-7 h-7" />
+      {canViewPayroll ? (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-zen-border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 rounded-2xl bg-zen-matcha/15 border border-zen-matcha/30 flex items-center justify-center text-zen-moss shrink-0">
+              <Wallet className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-bold text-zen-charcoal font-serif">
+                Modul Operasional: View Payroll (Slip Gaji)
+              </h3>
+              <p className="text-xs text-zen-charcoal/60 mt-0.5 leading-relaxed">
+                Pantau rincian slip gaji, Take Home Pay (THP), komisi, serta absensi (cuti, alpa, keterlambatan) Anda per periode.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/payroll')}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-xs transition-all active:scale-95 shrink-0"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Buka Slip Gaji</span>
+          </button>
         </div>
-        <div className="space-y-1">
-          <h3 className="text-lg font-bold text-zen-charcoal font-serif">
-            Ruang Kerja Operasional Zen
-          </h3>
-          <p className="text-xs sm:text-sm text-zen-charcoal/60 max-w-md mx-auto leading-relaxed">
-            Struktur otorisasi dua langkah dan verifikasi kode karyawan HRD telah terpasang dengan aman.
-            Modul operasional akan diimplementasikan satu per satu pada langkah berikutnya.
-          </p>
+      ) : (
+        <div className="bg-white rounded-3xl p-6 sm:p-10 border border-zen-border shadow-xs text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-zen-linen flex items-center justify-center mx-auto text-zen-matcha border border-zen-border/70">
+            <Layers className="w-7 h-7" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold text-zen-charcoal font-serif">
+              Ruang Kerja Operasional Zen
+            </h3>
+            <p className="text-xs sm:text-sm text-zen-charcoal/60 max-w-md mx-auto leading-relaxed">
+              Struktur otorisasi dua langkah dan verifikasi kode karyawan HRD telah terpasang dengan aman.
+              Modul operasional akan diimplementasikan satu per satu pada langkah berikutnya.
+            </p>
+          </div>
+          <div className="pt-2 flex items-center justify-center space-x-2 text-xs font-semibold text-zen-moss">
+            <Sparkles className="w-4 h-4" />
+            <span>Sistem siap untuk penambahan modul operasional gerai</span>
+          </div>
         </div>
-        <div className="pt-2 flex items-center justify-center space-x-2 text-xs font-semibold text-zen-moss">
-          <Sparkles className="w-4 h-4" />
-          <span>Sistem siap untuk penambahan modul operasional gerai</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
@@ -251,6 +287,22 @@ const AppShellLayout: React.FC<{ children: React.ReactNode }> = ({ children }) =
   );
 };
 
+/**
+ * Route Guard for View Payroll:
+ * Superuser (Role 8) is excluded and redirected to /dashboard.
+ * Non-Superusers must be approved and have a valid employee code.
+ */
+const PayrollGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { profile } = useAuth();
+  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
+
+  if (isSuperuser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -295,6 +347,20 @@ export const App: React.FC = () => {
               <ProtectedRoute allowedRoles={[8, 6]}>
                 <AppShellLayout>
                   <UserManagementPage />
+                </AppShellLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Operational Module: View Payroll (Hidden for Superuser, available to approved staff with kodekaryawan) */}
+          <Route
+            path="/payroll"
+            element={
+              <ProtectedRoute>
+                <AppShellLayout>
+                  <PayrollGuard>
+                    <PayrollPage />
+                  </PayrollGuard>
                 </AppShellLayout>
               </ProtectedRoute>
             }

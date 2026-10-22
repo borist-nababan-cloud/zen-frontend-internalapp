@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Sparkles, Layers, Users, Home, Shield } from 'lucide-react';
+import { Sparkles, Layers, Users, Home, Wallet } from 'lucide-react';
 
 interface SidebarProps {
   currentTab: string;
@@ -11,7 +11,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
   const { profile } = useAuth();
 
   // Strict User Management check: Only Role 8 (SUPERUSER) & Role 6 (outlet_admin). Exclude Role 1 (admin_holding).
-  const canManageUsers = profile?.role_user === 8 || profile?.role_user === 6;
+  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
+  const canManageUsers = isSuperuser || profile?.role_user === 6 || profile?.user_role === 6;
+
+  // View Payroll Rule:
+  // Superuser (Role 8) does NOT see "View Payroll".
+  // Other roles (including Outlet Admin Role 6, Staff Role 12, etc.) can access if they have kodekaryawan and approval_status = 'APPROVED'.
+  const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-zen-border bg-zen-paper min-h-[calc(100vh-4rem)] p-4 justify-between">
@@ -41,7 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
             <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-zen-charcoal/50 mb-2 flex items-center justify-between">
               <span>Administrasi</span>
               <span className="text-[10px] text-zen-moss font-semibold">
-                {profile?.role_user === 8 ? 'Superuser' : `Gerai ${profile?.kode_outlet}`}
+                {isSuperuser ? 'Superuser' : `Gerai ${profile?.kode_outlet}`}
               </span>
             </p>
             <button
@@ -58,18 +64,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
           </div>
         )}
 
-        {/* Upcoming Operational Modules Placeholder */}
-        <div>
+        {/* Operational Modules Section */}
+        <div className="space-y-1">
           <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-zen-charcoal/50 mb-2">
             Modul Operasional
           </p>
-          <div className="px-3 py-5 rounded-2xl bg-zen-linen/80 border border-dashed border-zen-border text-center space-y-1.5">
-            <Layers className="w-4 h-4 text-zen-moss/50 mx-auto" />
-            <p className="text-xs font-semibold text-zen-charcoal/70">Menyiapkan Modul</p>
-            <p className="text-[10px] text-zen-charcoal/50 leading-relaxed">
-              Modul presensi & layanan gerai akan segera hadir di tahap berikutnya.
-            </p>
-          </div>
+
+          {canViewPayroll ? (
+            <button
+              onClick={() => onTabChange('payroll')}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
+                currentTab === 'payroll'
+                  ? 'bg-zen-matcha text-white shadow-xs'
+                  : 'text-zen-charcoal hover:bg-zen-linen'
+              }`}
+            >
+              <Wallet className="w-4 h-4 text-zen-moss" />
+              <span>View Payroll</span>
+            </button>
+          ) : (
+            <div className="px-3 py-5 rounded-2xl bg-zen-linen/80 border border-dashed border-zen-border text-center space-y-1.5">
+              <Layers className="w-4 h-4 text-zen-moss/50 mx-auto" />
+              <p className="text-xs font-semibold text-zen-charcoal/70">Modul Operasional</p>
+              <p className="text-[10px] text-zen-charcoal/50 leading-relaxed">
+                {isSuperuser
+                  ? 'Superuser mengelola sistem secara terpusat.'
+                  : 'Tautkan kode karyawan untuk membuka modul slip gaji.'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -86,3 +109,5 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
     </aside>
   );
 };
+
+export default Sidebar;

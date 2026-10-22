@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LogIn, LogOut, Shield, ChevronDown, Users, Home } from 'lucide-react';
+import { LogIn, LogOut, Shield, ChevronDown, Users, Home, Wallet } from 'lucide-react';
 
 interface HeaderProps {
   currentTab?: string;
@@ -14,7 +14,9 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
   const navbarTitle = import.meta.env.VITE_NAVBAR_TITLE || 'ZEN OPERATIONAL';
   const appVersion = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
-  const canManageUsers = profile?.role_user === 8 || profile?.role_user === 6;
+  const isSuperuser = profile?.role_user === 8 || profile?.user_role === 8;
+  const canManageUsers = isSuperuser || profile?.role_user === 6 || profile?.user_role === 6;
+  const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
 
   const getInitials = (name: string) => {
     return name
@@ -165,6 +167,21 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
                         >
                           <Users className="w-4 h-4 mr-2.5 text-zen-moss" />
                           Manajemen User & Staf
+                        </button>
+                      )}
+
+                      {canViewPayroll && (
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            onTabChange?.('payroll');
+                          }}
+                          className={`w-full flex items-center px-4 py-2.5 text-xs font-semibold hover:bg-zen-linen transition-colors ${
+                            currentTab === 'payroll' ? 'text-zen-moss bg-zen-linen/60' : 'text-zen-charcoal'
+                          }`}
+                        >
+                          <Wallet className="w-4 h-4 mr-2.5 text-zen-moss" />
+                          View Payroll (Slip Gaji)
                         </button>
                       )}
                     </div>
