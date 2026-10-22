@@ -25,11 +25,17 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
       .toUpperCase();
   };
 
+  const roleId = profile?.user_role ?? profile?.role_user ?? 12;
+
   const getRoleLabel = () => {
-    if (profile?.role_user === 8) return 'SUPERUSER (Role 8)';
-    if (profile?.role_user === 6) return `ADMIN GERAI (Outlet ${profile.kode_outlet || ''})`;
-    if (profile?.role_user === 1) return 'ADMIN HOLDING (Role 1)';
-    return `OPERATIONAL STAFF (Role ${profile?.role_user ?? 12})`;
+    if (profile?.role_name) {
+      return `${profile.role_name.toUpperCase()} (Role ${roleId})`;
+    }
+    if (roleId === 8) return 'SUPERUSER (Role 8)';
+    if (roleId === 6) return `ADMIN GERAI (Role 6)`;
+    if (roleId === 11) return 'THERAPIST (Role 11)';
+    if (roleId === 1) return 'ADMIN HOLDING (Role 1)';
+    return `OPERATIONAL STAFF (Role ${roleId})`;
   };
 
   return (
@@ -92,11 +98,11 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
                 {/* Name & Role (Desktop) */}
                 <div className="hidden sm:block text-left">
                   <div className="text-sm font-semibold text-zen-charcoal truncate max-w-[130px]">
-                    {profile?.full_name || 'Staff Member'}
+                    {profile?.namakaryawan || profile?.full_name || 'Staff Member'}
                   </div>
                   <div className="text-[10px] font-medium text-zen-moss flex items-center">
                     <Shield className="w-2.5 h-2.5 mr-0.5" />
-                    Role {profile?.role_user ?? 12}
+                    {profile?.role_name || `Role ${roleId}`}
                   </div>
                 </div>
 
@@ -112,8 +118,8 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
                   />
                   <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-white border border-zen-border shadow-xl z-50 py-2 animate-in fade-in slide-in-from-top-2 duration-150">
                     <div className="px-4 py-3 border-b border-zen-border/60">
-                      <p className="text-sm font-semibold text-zen-charcoal">
-                        {profile?.full_name}
+                      <p className="text-sm font-bold text-zen-charcoal">
+                        {profile?.namakaryawan || profile?.full_name}
                       </p>
                       <p className="text-xs text-zen-charcoal/60 truncate">
                         {profile?.email}
@@ -121,9 +127,14 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
                       <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-zen-matcha/15 text-zen-moss">
                         {getRoleLabel()}
                       </div>
+                      {profile?.kode_outlet && (
+                        <p className="text-[11px] text-zen-charcoal/70 mt-1">
+                          Outlet: <span className="font-semibold text-zen-moss">{profile.kode_outlet} {profile.name_outlet ? `• ${profile.name_outlet}` : ''}</span>
+                        </p>
+                      )}
                       {profile?.kodekaryawan && (
-                        <p className="text-[11px] text-zen-charcoal/60 mt-1">
-                          Kode: <span className="font-mono font-semibold">{profile.kodekaryawan}</span>
+                        <p className="text-[11px] text-zen-charcoal/60 mt-0.5">
+                          ID Karyawan: <span className="font-mono font-semibold">{profile.kodekaryawan}</span>
                         </p>
                       )}
                     </div>

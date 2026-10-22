@@ -19,18 +19,28 @@ import {
   AlertTriangle,
   Clock,
   Sparkles,
-  ChevronDown
+  Edit3,
+  BadgeCheck,
 } from 'lucide-react';
+
+interface RoleOption {
+  id: number;
+  role_name: string;
+}
 
 interface ManageableUser {
   uid: string;
   email: string;
   full_name: string;
+  google_name?: string;
+  namakaryawan?: string;
   avatar_url: string;
   kodekaryawan?: string;
   kode_outlet?: string;
+  name_outlet?: string;
   departemen?: string;
   role_user: number;
+  user_role: number;
   role_name?: string;
   approval_status: 'UNLINKED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   is_active: boolean;
@@ -42,8 +52,9 @@ interface ManageableUser {
 export const UserManagementPage: React.FC = () => {
   const { profile } = useAuth();
   const [users, setUsers] = useState<ManageableUser[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [callerRole, setCallerRole] = useState<number>(profile?.role_user || 12);
+  const [callerRole, setCallerRole] = useState<number>(profile?.user_role || profile?.role_user || 12);
   const [callerOutlet, setCallerOutlet] = useState<string | null>(profile?.kode_outlet || null);
   const [activeTab, setActiveTab] = useState<'pending' | 'all'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -56,14 +67,34 @@ export const UserManagementPage: React.FC = () => {
   const [rejectingUser, setRejectingUser] = useState<ManageableUser | null>(null);
   const [rejectReason, setRejectReason] = useState('');
 
-  // Selected role for pending approval per user
-  const [selectedRoles, setSelectedRoles] = useState<Record<string, number>>({});
+  // Edit Role modal state (for APPROVED users)
+  const [editingRoleUser, setEditingRoleUser] = useState<ManageableUser | null>(null);
+  const [newSelectedRole, setNewSelectedRole] = useState<number>(12);
+
+  // Selected role for pending approval per user (Only Role 8 can modify)
+  const [selectedPendingRoles, setSelectedPendingRoles] = useState<Record<string, number>>({});
 
   // Strict Permission Check: Only Role 8 (SUPERUSER) & Role 6 (outlet_admin). Exclude Role 1 (admin_holding).
-  const isSuperuser = profile?.role_user === 8;
-  const isOutletAdmin = profile?.role_user === 6;
+  const isSuperuser = (profile?.user_role || profile?.role_user) === 8;
+  const isOutletAdmin = (profile?.user_role || profile?.role_user) === 6;
   const isAllowed = isSuperuser || isOutletAdmin;
 
+  // 1. Fetch available roles dynamically from public.role_user
+  const fetchRoleOptions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('role_user')
+        .select('id, role_name')
+        .order('id');
+      if (data && !error) {
+        setRoleOptions(data);
+      }
+    } catch (e) {
+      console.warn('Error fetching roles from role_user:', e);
+    }
+  };
+
+  // 2. Fetch manageable users list
   const fetchUsers = async () => {
     if (!isAllowed) return;
     setLoading(true);
@@ -87,12 +118,13 @@ export const UserManagementPage: React.FC = () => {
   };
 
   useEffect(() => {
+    fetchRoleOptions();
     fetchUsers();
-  }, [profile?.role_user]);
+  }, [profile?.user_role, profile?.role_user]);
 
-  // Handle Approve User
+  // Handle Approve User (Only Role 8 can pass custom role; Role 6 always defaults to 12)
   const handleApprove = async (userItem: ManageableUser) => {
-    const roleToAssign = selectedRoles[userItem.uid] || 12; // default 12 (operational_staff)
+    const roleToAssign = isSuperuser ? (selectedPendingRoles[userItem.uid] || 12) : 12;
     setActionLoading(userItem.uid);
     setFeedback(null);
     try {
@@ -116,7 +148,7 @@ export const UserManagementPage: React.FC = () => {
     }
   };
 
-  // Handle Reject User
+  // Handle Reject User Confirm
   const handleRejectConfirm = async () => {
     if (!rejectingUser) return;
     setActionLoading(rejectingUser.uid);
@@ -139,6 +171,33 @@ export const UserManagementPage: React.FC = () => {
       }
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Kesalahan saat menolak user.' });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Handle Edit Role for APPROVED User (Superuser only)
+  const handleEditRoleConfirm = async () => {
+    if (!editingRoleUser) return;
+    setActionLoading(editingRoleUser.uid);
+    setFeedback(null);
+    try {
+      const { data, error } = await supabase.rpc('update_user_role', {
+        p_target_uid: editingRoleUser.uid,
+        p_new_role: newSelectedRole,
+      });
+
+      if (error) {
+        setFeedback({ type: 'error', message: error.message });
+      } else if (data?.success) {
+        setFeedback({ type: 'success', message: data.message });
+        setEditingRoleUser(null);
+        await fetchUsers();
+      } else {
+        setFeedback({ type: 'error', message: data?.message || 'Gagal mengubah role pengguna.' });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Kesalahan saat mengubah role.' });
     } finally {
       setActionLoading(null);
     }
@@ -185,11 +244,13 @@ export const UserManagementPage: React.FC = () => {
 
   // Unique outlets for filter
   const outletOptions = useMemo(() => {
-    const outlets = new Set<string>();
+    const outlets = new Map<string, string>();
     users.forEach((u) => {
-      if (u.kode_outlet) outlets.add(u.kode_outlet);
+      if (u.kode_outlet) {
+        outlets.set(u.kode_outlet, u.name_outlet || u.kode_outlet);
+      }
     });
-    return Array.from(outlets).sort();
+    return Array.from(outlets.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [users]);
 
   // Filtered lists
@@ -201,11 +262,12 @@ export const UserManagementPage: React.FC = () => {
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const matchName = u.full_name?.toLowerCase().includes(query);
+        const matchName = u.namakaryawan?.toLowerCase().includes(query) || u.full_name?.toLowerCase().includes(query);
+        const matchGoogle = u.google_name?.toLowerCase().includes(query);
         const matchEmail = u.email?.toLowerCase().includes(query);
         const matchCode = u.kodekaryawan?.toLowerCase().includes(query);
-        const matchOutlet = u.kode_outlet?.toLowerCase().includes(query);
-        if (!matchName && !matchEmail && !matchCode && !matchOutlet) return false;
+        const matchOutlet = u.kode_outlet?.toLowerCase().includes(query) || u.name_outlet?.toLowerCase().includes(query);
+        if (!matchName && !matchGoogle && !matchEmail && !matchCode && !matchOutlet) return false;
       }
 
       // Status filter (on all tab)
@@ -225,7 +287,7 @@ export const UserManagementPage: React.FC = () => {
     });
   }, [users, activeTab, searchQuery, statusFilter, outletFilter, isSuperuser]);
 
-  // If unauthorized (e.g. Role 1 admin_holding or Role 12 operational_staff)
+  // If unauthorized (e.g. Role 1 admin_holding or other roles)
   if (!isAllowed) {
     return (
       <div className="bg-white rounded-3xl p-8 sm:p-12 border border-zen-border text-center max-w-lg mx-auto my-12 space-y-4">
@@ -237,7 +299,7 @@ export const UserManagementPage: React.FC = () => {
           Modul Manajemen Pengguna hanya dapat diakses oleh <strong>Admin Gerai (Role 6)</strong> untuk gerai masing-masing atau <strong>Superuser (Role 8)</strong>.
         </p>
         <p className="text-[11px] text-zen-charcoal/50">
-          Peran Anda saat ini: Role {profile?.role_user} ({profile?.role || 'Staff'})
+          Peran Anda saat ini: Role {profile?.user_role || profile?.role_user} ({profile?.role_name || profile?.role || 'Staff'})
         </p>
       </div>
     );
@@ -268,8 +330,8 @@ export const UserManagementPage: React.FC = () => {
             </div>
             <p className="text-xs text-zen-charcoal/60 mt-0.5">
               {isSuperuser
-                ? 'Wewenang penuh mengelola dan menyetujui seluruh pengguna dari semua gerai Zen Family Spa.'
-                : `Wewenang mengelola staf dan menyetujui akun khusus gerai Anda (${callerOutlet}).`}
+                ? 'Wewenang penuh mengelola, menyetujui, dan mengubah role pengguna dari seluruh gerai Zen Family Spa.'
+                : `Wewenang mengelola dan menyetujui staf khusus gerai Anda (${callerOutlet}).`}
             </p>
           </div>
         </div>
@@ -394,7 +456,7 @@ export const UserManagementPage: React.FC = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari nama, email, kode..."
+              placeholder="Cari nama, email, kode, outlet..."
               className="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-zen-border focus:border-zen-matcha focus:ring-1 focus:ring-zen-matcha outline-none bg-zen-linen/40"
             />
           </div>
@@ -426,9 +488,9 @@ export const UserManagementPage: React.FC = () => {
                 className="px-2.5 py-1.5 rounded-lg border border-zen-border bg-zen-linen/40 text-zen-charcoal font-medium text-xs outline-none"
               >
                 <option value="all">Semua Outlet ({outletOptions.length})</option>
-                {outletOptions.map((o) => (
-                  <option key={o} value={o}>
-                    Outlet {o}
+                {outletOptions.map(([k, name]) => (
+                  <option key={k} value={k}>
+                    Outlet {k} • {name}
                   </option>
                 ))}
               </select>
@@ -465,6 +527,10 @@ export const UserManagementPage: React.FC = () => {
               const isUnlinked = u.approval_status === 'UNLINKED';
               const isActionRunning = actionLoading === u.uid;
 
+              // Primary displayed name: Priority to ot_hrd_karyawan_info.namakaryawan
+              const primaryName = u.namakaryawan || u.full_name || u.email;
+              const hasOfficialName = !!u.namakaryawan;
+
               return (
                 <div
                   key={u.uid}
@@ -481,13 +547,13 @@ export const UserManagementPage: React.FC = () => {
                         {u.avatar_url ? (
                           <img
                             src={u.avatar_url}
-                            alt={u.full_name}
+                            alt={primaryName}
                             className="w-11 h-11 rounded-xl object-cover ring-2 ring-zen-border"
                             referrerPolicy="no-referrer"
                           />
                         ) : (
                           <div className="w-11 h-11 rounded-xl bg-zen-matcha text-white font-bold text-sm flex items-center justify-center">
-                            {u.full_name?.slice(0, 2).toUpperCase() || 'ST'}
+                            {primaryName?.slice(0, 2).toUpperCase() || 'ST'}
                           </div>
                         )}
                         <div
@@ -499,8 +565,12 @@ export const UserManagementPage: React.FC = () => {
 
                       <div className="min-w-0">
                         <div className="flex items-center space-x-2 flex-wrap">
-                          <h3 className="text-sm font-bold text-zen-charcoal truncate">
-                            {u.full_name}
+                          {/* Official HRD Name Display */}
+                          <h3 className="text-sm font-bold text-zen-charcoal truncate flex items-center">
+                            {primaryName}
+                            {hasOfficialName && (
+                              <BadgeCheck className="w-4 h-4 text-zen-moss ml-1 shrink-0" title="Terverifikasi HRD" />
+                            )}
                           </h3>
 
                           {/* Approval Status Badge */}
@@ -532,9 +602,16 @@ export const UserManagementPage: React.FC = () => {
                           )}
                         </div>
 
-                        <p className="text-xs text-zen-charcoal/60 truncate mt-0.5">{u.email}</p>
+                        {/* Google Account / Secondary Email display */}
+                        <p className="text-xs text-zen-charcoal/60 truncate mt-0.5">
+                          {hasOfficialName && u.google_name && u.google_name !== u.namakaryawan ? (
+                            <span>Akun Google: <strong className="font-medium text-zen-charcoal">{u.google_name}</strong> • {u.email}</span>
+                          ) : (
+                            <span>{u.email}</span>
+                          )}
+                        </p>
 
-                        {/* Metadata chips */}
+                        {/* Metadata chips: Kode Karyawan, Outlet with Name Outlet, Departemen, Role */}
                         <div className="flex flex-wrap items-center gap-2 mt-2 text-[11px] text-zen-charcoal/70">
                           {u.kodekaryawan && (
                             <span className="px-2 py-0.5 rounded-lg bg-zen-linen border border-zen-border font-mono font-semibold text-zen-moss flex items-center">
@@ -543,10 +620,15 @@ export const UserManagementPage: React.FC = () => {
                             </span>
                           )}
 
-                          {u.kode_outlet && (
+                          {u.kode_outlet ? (
                             <span className="px-2 py-0.5 rounded-lg bg-zen-linen border border-zen-border font-medium flex items-center">
                               <Building2 className="w-2.5 h-2.5 mr-1 text-zen-moss" />
-                              Outlet {u.kode_outlet}
+                              Outlet {u.kode_outlet} {u.name_outlet ? `• ${u.name_outlet}` : ''}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-lg bg-zen-linen border border-zen-border font-medium text-zen-charcoal/50 flex items-center">
+                              <Building2 className="w-2.5 h-2.5 mr-1 text-zen-charcoal/40" />
+                              Pusat / Holding
                             </span>
                           )}
 
@@ -559,7 +641,7 @@ export const UserManagementPage: React.FC = () => {
 
                           <span className="px-2 py-0.5 rounded-lg bg-zen-matcha/10 text-zen-moss font-semibold flex items-center">
                             <Shield className="w-2.5 h-2.5 mr-1" />
-                            Role {u.role_user} ({u.role_name || 'Staff'})
+                            Role {u.user_role || u.role_user} ({u.role_name || 'Staff'})
                           </span>
                         </div>
 
@@ -575,31 +657,46 @@ export const UserManagementPage: React.FC = () => {
                     <div className="flex flex-wrap items-center gap-2 self-end lg:self-center w-full lg:w-auto justify-end pt-2 lg:pt-0 border-t lg:border-t-0 border-zen-border/50">
                       {isPending ? (
                         <>
-                          {/* Role Selector dropdown for approval */}
-                          <div className="flex items-center space-x-1">
-                            <span className="text-[11px] text-zen-charcoal/50 hidden sm:inline">
-                              Beri Role:
+                          {/* ONLY Role 8 (SUPERUSER) can change role_id on PENDING */}
+                          {isSuperuser ? (
+                            <div className="flex items-center space-x-1">
+                              <span className="text-[11px] text-zen-charcoal/50 hidden sm:inline">
+                                Beri Role:
+                              </span>
+                              <select
+                                value={selectedPendingRoles[u.uid] || 12}
+                                onChange={(e) =>
+                                  setSelectedPendingRoles({
+                                    ...selectedPendingRoles,
+                                    [u.uid]: Number(e.target.value),
+                                  })
+                                }
+                                disabled={isActionRunning}
+                                className="px-2 py-1.5 rounded-xl border border-zen-border text-xs font-semibold bg-white text-zen-charcoal outline-none focus:border-zen-matcha"
+                              >
+                                {roleOptions.length > 0 ? (
+                                  roleOptions.map((r) => (
+                                    <option key={r.id} value={r.id}>
+                                      {r.id} - {r.role_name}
+                                    </option>
+                                  ))
+                                ) : (
+                                  <>
+                                    <option value={12}>12 - operational_staff</option>
+                                    <option value={11}>11 - THERAPIST</option>
+                                    <option value={6}>6 - outlet_admin</option>
+                                    <option value={7}>7 - gudang_outlet</option>
+                                    <option value={10}>10 - finance_outlet</option>
+                                    <option value={14}>14 - MANAGER</option>
+                                  </>
+                                )}
+                              </select>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-zen-charcoal/50 bg-zen-linen px-2.5 py-1 rounded-lg border border-zen-border">
+                              Role 12 (Staff Operasional)
                             </span>
-                            <select
-                              value={selectedRoles[u.uid] || 12}
-                              onChange={(e) =>
-                                setSelectedRoles({
-                                  ...selectedRoles,
-                                  [u.uid]: Number(e.target.value),
-                                })
-                              }
-                              disabled={isActionRunning}
-                              className="px-2 py-1.5 rounded-xl border border-zen-border text-xs font-semibold bg-white text-zen-charcoal outline-none focus:border-zen-matcha"
-                            >
-                              <option value={12}>12 - Operational Staff</option>
-                              <option value={11}>11 - Therapist</option>
-                              <option value={7}>7 - Gudang Outlet</option>
-                              <option value={10}>10 - Finance Outlet</option>
-                              {/* Only Superuser can grant Role 6 (outlet_admin) */}
-                              {isSuperuser && <option value={6}>6 - Outlet Admin</option>}
-                              {isSuperuser && <option value={14}>14 - Manager</option>}
-                            </select>
-                          </div>
+                          )}
 
                           <button
                             onClick={() => handleApprove(u)}
@@ -624,6 +721,21 @@ export const UserManagementPage: React.FC = () => {
                         </>
                       ) : (
                         <>
+                          {/* For APPROVED users: Add button to edit role_id (SUPERUSER only) */}
+                          {isApproved && isSuperuser && (
+                            <button
+                              onClick={() => {
+                                setEditingRoleUser(u);
+                                setNewSelectedRole(u.user_role || u.role_user || 12);
+                              }}
+                              disabled={isActionRunning}
+                              className="px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 bg-zen-linen hover:bg-zen-sand/30 text-zen-charcoal border border-zen-border transition-all"
+                            >
+                              <Edit3 className="w-3 h-3 text-zen-moss" />
+                              <span>Ubah Role</span>
+                            </button>
+                          )}
+
                           {/* Toggle Active status button */}
                           {isApproved && (
                             <button
@@ -650,6 +762,88 @@ export const UserManagementPage: React.FC = () => {
         )}
       </div>
 
+      {/* Edit Role Modal (for APPROVED users - Role 8 Superuser only) */}
+      {editingRoleUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-zen-border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center space-x-3 text-zen-moss">
+              <div className="p-2.5 rounded-2xl bg-zen-matcha/15 text-zen-moss">
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-zen-charcoal font-serif">
+                  Ubah Role Pengguna
+                </h3>
+                <p className="text-[11px] text-zen-charcoal/60">Pilih role baru dari tabel master role_user</p>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-zen-linen/70 border border-zen-border space-y-1.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-zen-charcoal/60">Nama Staf:</span>
+                <span className="font-bold text-zen-charcoal">
+                  {editingRoleUser.namakaryawan || editingRoleUser.full_name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zen-charcoal/60">Email:</span>
+                <span className="font-medium text-zen-charcoal truncate max-w-[220px]">
+                  {editingRoleUser.email}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zen-charcoal/60">Gerai / Lokasi:</span>
+                <span className="font-medium text-zen-charcoal">
+                  {editingRoleUser.kode_outlet ? `Outlet ${editingRoleUser.kode_outlet} ${editingRoleUser.name_outlet ? `• ${editingRoleUser.name_outlet}` : ''}` : 'Pusat / Holding'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-zen-border/60">
+                <span className="text-zen-charcoal/60">Role Saat Ini:</span>
+                <span className="font-bold text-zen-moss">
+                  Role {editingRoleUser.user_role || editingRoleUser.role_user} ({editingRoleUser.role_name || 'Staff'})
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zen-charcoal mb-1.5">
+                Pilih Role Baru:
+              </label>
+              <select
+                value={newSelectedRole}
+                onChange={(e) => setNewSelectedRole(Number(e.target.value))}
+                className="w-full p-3 text-xs font-semibold rounded-2xl border border-zen-border focus:border-zen-matcha focus:ring-1 focus:ring-zen-matcha outline-none bg-zen-linen/40"
+              >
+                {roleOptions.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    Role {r.id} - {r.role_name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] text-zen-charcoal/50 mt-1.5">
+                Daftar role dibaca langsung secara dinamis dari tabel database <code>public.role_user</code>.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                onClick={() => setEditingRoleUser(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-zen-charcoal/70 hover:bg-zen-linen"
+              >
+                Batal
+              </button>
+              <button
+                onClick={handleEditRoleConfirm}
+                disabled={actionLoading === editingRoleUser.uid}
+                className="px-4 py-2 rounded-xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold shadow-xs"
+              >
+                {actionLoading === editingRoleUser.uid ? 'Menyimpan...' : 'Simpan Role Baru'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reject Modal */}
       {rejectingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
@@ -664,7 +858,7 @@ export const UserManagementPage: React.FC = () => {
             </div>
 
             <p className="text-xs text-zen-charcoal/70 leading-relaxed">
-              Anda akan menolak pengajuan akun <strong>{rejectingUser.full_name}</strong> (Kode:{' '}
+              Anda akan menolak pengajuan akun <strong>{rejectingUser.namakaryawan || rejectingUser.full_name}</strong> (Kode:{' '}
               {rejectingUser.kodekaryawan || '-'}). Pengguna akan menerima notifikasi alasan penolakan.
             </p>
 

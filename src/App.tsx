@@ -172,10 +172,12 @@ const AppContent: React.FC = () => {
                 </div>
               )}
               <div>
-                <h2 className="text-lg font-bold text-zen-charcoal font-serif">{profile?.full_name}</h2>
+                <h2 className="text-lg font-bold text-zen-charcoal font-serif">
+                  {profile?.namakaryawan || profile?.full_name}
+                </h2>
                 <p className="text-xs text-zen-charcoal/60">{profile?.email}</p>
                 <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-zen-matcha/15 text-zen-moss">
-                  Role {profile?.role_user} ({isSuperuser ? 'SUPERUSER' : isOutletAdmin ? 'OUTLET_ADMIN' : 'OPERATIONAL_STAFF'})
+                  Role {profile?.user_role || profile?.role_user} ({profile?.role_name ? profile.role_name.toUpperCase() : isSuperuser ? 'SUPERUSER' : isOutletAdmin ? 'OUTLET_ADMIN' : 'OPERATIONAL_STAFF'})
                 </div>
               </div>
             </div>
@@ -194,7 +196,9 @@ const AppContent: React.FC = () => {
                   <Building2 className="w-3 h-3 mr-1 text-zen-moss" />
                   Gerai / Outlet
                 </span>
-                <p className="font-bold text-zen-charcoal">Outlet {profile?.kode_outlet || '-'}</p>
+                <p className="font-bold text-zen-charcoal">
+                  {profile?.kode_outlet ? `Outlet ${profile.kode_outlet} ${profile.name_outlet ? `• ${profile.name_outlet}` : ''}` : 'Pusat / Holding'}
+                </p>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-zen-linen/60 border border-zen-border/60 space-y-1">
@@ -235,13 +239,13 @@ const AppContent: React.FC = () => {
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
-                    alt={profile.full_name}
+                    alt={profile.namakaryawan || profile.full_name}
                     className="w-14 h-14 rounded-2xl object-cover ring-2 ring-zen-matcha shadow-xs"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-2xl bg-zen-matcha text-white font-bold text-lg flex items-center justify-center shadow-xs">
-                    {profile?.full_name?.slice(0, 2).toUpperCase() || 'ST'}
+                    {(profile?.namakaryawan || profile?.full_name)?.slice(0, 2).toUpperCase() || 'ST'}
                   </div>
                 )}
                 <div className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full">
@@ -251,19 +255,22 @@ const AppContent: React.FC = () => {
 
               <div>
                 <h2 className="text-lg sm:text-xl font-bold text-zen-charcoal font-serif">
-                  Selamat Datang, {profile?.full_name}!
+                  Selamat Datang, {profile?.namakaryawan || profile?.full_name}!
                 </h2>
                 <p className="text-xs text-zen-charcoal/60 mt-0.5">
-                  {profile?.email} • Outlet: <span className="font-semibold text-zen-moss">{profile?.kode_outlet || 'Pusat'}</span>
+                  {profile?.email} • Outlet:{' '}
+                  <span className="font-semibold text-zen-moss">
+                    {profile?.kode_outlet ? `Outlet ${profile.kode_outlet} ${profile.name_outlet ? `• ${profile.name_outlet}` : ''}` : 'Pusat / Holding'}
+                  </span>
                   {profile?.kodekaryawan && (
-                    <span className="ml-2 font-mono text-[11px] bg-zen-sand/20 px-2 py-0.5 rounded-md">
+                    <span className="ml-2 font-mono text-[11px] bg-zen-sand/20 px-2 py-0.5 rounded-md text-zen-charcoal">
                       ID: {profile.kodekaryawan}
                     </span>
                   )}
                 </p>
                 <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-zen-matcha/15 text-zen-moss border border-zen-matcha/30">
                   <ShieldCheck className="w-3 h-3 mr-1" />
-                  Role {profile?.role_user ?? 12} ({isSuperuser ? 'SUPERUSER' : isOutletAdmin ? 'OUTLET_ADMIN' : 'OPERATIONAL_STAFF'})
+                  Role {profile?.user_role || profile?.role_user} ({profile?.role_name ? profile.role_name.toUpperCase() : isSuperuser ? 'SUPERUSER' : isOutletAdmin ? 'OUTLET_ADMIN' : 'OPERATIONAL_STAFF'})
                 </div>
               </div>
             </div>

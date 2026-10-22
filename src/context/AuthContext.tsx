@@ -9,8 +9,12 @@ export interface UserProfile {
   avatar_url: string;
   role: string;
   role_user: number;
+  user_role: number;
+  role_name?: string;
   kodekaryawan?: string;
+  namakaryawan?: string;
   kode_outlet?: string;
+  name_outlet?: string;
   departemen?: string;
   approval_status: 'UNLINKED' | 'PENDING' | 'APPROVED' | 'REJECTED';
   is_active: boolean;
@@ -44,20 +48,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 1. Fetch from public.users_profile (primary profile store)
       const { data: uProfData, error: uProfError } = await supabase
         .from('users_profile')
-        .select('*')
+        .select(`
+          *,
+          role_info:user_role ( id, role_name ),
+          outlet_info:kode_outlet ( kode_outlet, name_outlet )
+        `)
         .eq('uid', currentUser.id)
         .maybeSingle();
 
       if (uProfData && !uProfError) {
+        let namakaryawan: string | undefined = undefined;
+        if (uProfData.kodekaryawan) {
+          const { data: empData } = await supabase
+            .from('ot_hrd_karyawan_info')
+            .select('namakaryawan')
+            .eq('kodekaryawan', uProfData.kodekaryawan)
+            .maybeSingle();
+          if (empData?.namakaryawan) {
+            namakaryawan = empData.namakaryawan;
+          }
+        }
+
+        const roleUserNum = uProfData.user_role ?? uProfData.role_user ?? 12;
+        const roleNameStr = (uProfData.role_info as any)?.role_name || undefined;
+        const nameOutletStr = (uProfData.outlet_info as any)?.name_outlet || undefined;
+
         setProfile({
           id: uProfData.uid,
           email: uProfData.email || currentUser.email || '',
-          full_name: uProfData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
+          full_name: namakaryawan || uProfData.full_name || currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || 'Staff Member',
           avatar_url: uProfData.avatar_url || currentUser.user_metadata?.avatar_url || currentUser.user_metadata?.picture || '',
-          role: 'operational_staff',
-          role_user: uProfData.role_user || uProfData.user_role || 12,
+          role: roleNameStr || 'operational_staff',
+          role_user: roleUserNum,
+          user_role: roleUserNum,
+          role_name: roleNameStr,
           kodekaryawan: uProfData.kodekaryawan || undefined,
+          namakaryawan: namakaryawan,
           kode_outlet: uProfData.kode_outlet || undefined,
+          name_outlet: nameOutletStr,
           departemen: uProfData.departemen || undefined,
           approval_status: (uProfData.approval_status as any) || 'UNLINKED',
           is_active: !!uProfData.is_active,
