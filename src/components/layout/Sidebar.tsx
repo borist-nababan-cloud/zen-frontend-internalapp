@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Sparkles, Layers, Users, Home, Wallet } from 'lucide-react';
+import { Sparkles, Layers, Users, Home, Wallet, CalendarCheck } from 'lucide-react';
 
 interface SidebarProps {
   currentTab: string;
@@ -8,7 +8,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => {
-  const { profile, isSuperuser, canManageUsers, canViewPayroll } = useAuth();
+  const { profile, isSuperuser, canManageUsers, canViewPayroll, canViewAttendance } = useAuth();
 
   return (
     <aside className="hidden md:flex flex-col w-64 border-r border-zen-border bg-zen-paper min-h-[calc(100vh-4rem)] p-4 justify-between">
@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
             Modul Operasional
           </p>
 
-          {canViewPayroll ? (
+          {canViewPayroll && (
             <button
               onClick={() => onTabChange('payroll')}
               className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
@@ -70,17 +70,33 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
                   : 'text-zen-charcoal hover:bg-zen-linen'
               }`}
             >
-              <Wallet className="w-4 h-4 text-zen-moss" />
+              <Wallet className="w-4 h-4" />
               <span>View Payroll</span>
             </button>
-          ) : (
+          )}
+
+          {canViewAttendance && (
+            <button
+              onClick={() => onTabChange('attendance')}
+              className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
+                currentTab === 'attendance'
+                  ? 'bg-zen-matcha text-white shadow-xs'
+                  : 'text-zen-charcoal hover:bg-zen-linen'
+              }`}
+            >
+              <CalendarCheck className="w-4 h-4" />
+              <span>Lihat Absensi</span>
+            </button>
+          )}
+
+          {!canViewPayroll && !canViewAttendance && (
             <div className="px-3 py-5 rounded-2xl bg-zen-linen/80 border border-dashed border-zen-border text-center space-y-1.5">
               <Layers className="w-4 h-4 text-zen-moss/50 mx-auto" />
               <p className="text-xs font-semibold text-zen-charcoal/70">Modul Operasional</p>
               <p className="text-[10px] text-zen-charcoal/50 leading-relaxed">
                 {isSuperuser
                   ? 'Superuser mengelola sistem secara terpusat.'
-                  : 'Tautkan kode karyawan untuk membuka modul slip gaji.'}
+                  : 'Tautkan kode karyawan untuk membuka modul slip gaji & absensi.'}
               </p>
             </div>
           )}

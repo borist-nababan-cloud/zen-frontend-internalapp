@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Home, Users, User, Wallet } from 'lucide-react';
+import { Home, Users, User, Wallet, CalendarCheck } from 'lucide-react';
 
 interface BottomNavProps {
   currentTab: string;
@@ -8,17 +8,20 @@ interface BottomNavProps {
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onTabChange }) => {
-  const { canManageUsers, canViewPayroll } = useAuth();
+  const { canManageUsers, canViewPayroll, canViewAttendance } = useAuth();
 
   const tabs = [
     { id: 'dashboard', label: 'Beranda', icon: Home },
     ...(canManageUsers ? [{ id: 'user-management', label: 'Staf & User', icon: Users }] : []),
     ...(canViewPayroll ? [{ id: 'payroll', label: 'Payroll', icon: Wallet }] : []),
+    ...(canViewAttendance ? [{ id: 'attendance', label: 'Absensi', icon: CalendarCheck }] : []),
     { id: 'profile', label: 'Profil Saya', icon: User },
   ];
 
   const gridColsClass =
-    tabs.length === 4
+    tabs.length === 5
+      ? 'grid-cols-5'
+      : tabs.length === 4
       ? 'grid-cols-4'
       : tabs.length === 3
       ? 'grid-cols-3'

@@ -33,6 +33,7 @@ export interface AuthContextType {
   isOutletAdmin: boolean;
   canManageUsers: boolean;
   canViewPayroll: boolean;
+  canViewAttendance: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -404,10 +405,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isOutletAdmin = profile?.role_user === 6 || profile?.user_role === 6;
   const canManageUsers = isSuperuser || isOutletAdmin;
 
-  // View Payroll Rule:
-  // Superuser (Role 8) does NOT see "View Payroll".
+  // View Payroll & Attendance Rules:
+  // Superuser (Role 8) does NOT see "View Payroll" and "Lihat Absensi".
   // Other roles (including Outlet Admin Role 6, Staff Role 12, etc.) can access if they have kodekaryawan and approval_status = 'APPROVED'.
   const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
+  const canViewAttendance = canViewPayroll;
 
   return (
     <AuthContext.Provider
@@ -422,6 +424,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isOutletAdmin,
         canManageUsers,
         canViewPayroll,
+        canViewAttendance,
         signInWithGoogle,
         signInWithEmailOtp,
         signOut,

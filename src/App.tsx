@@ -12,6 +12,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { LoginPage } from './components/auth/LoginPage';
 import { UserManagementPage } from './components/admin/UserManagementPage';
 import { PayrollPage } from './components/payroll/PayrollPage';
+import { AttendancePage } from './components/attendance/AttendancePage';
 import { ProtectedRoute } from './components/routing/ProtectedRoute';
 import { PublicRoute } from './components/routing/PublicRoute';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
@@ -27,13 +28,14 @@ import {
   Hash,
   Shield,
   Wallet,
+  CalendarCheck,
 } from 'lucide-react';
 
 /**
  * Dashboard View
  */
 const DashboardView: React.FC = () => {
-  const { profile, isSuperuser, isOutletAdmin, canManageUsers, canViewPayroll } = useAuth();
+  const { profile, isSuperuser, isOutletAdmin, canManageUsers, canViewPayroll, canViewAttendance } = useAuth();
   const navigate = useNavigate();
 
   return (
@@ -101,6 +103,15 @@ const DashboardView: React.FC = () => {
               <span>View Payroll</span>
             </button>
           )}
+          {canViewAttendance && (
+            <button
+              onClick={() => navigate('/attendance')}
+              className="px-3.5 py-2 rounded-xl bg-zen-moss hover:bg-zen-moss/90 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition-all active:scale-95"
+            >
+              <CalendarCheck className="w-3.5 h-3.5" />
+              <span>Lihat Absensi</span>
+            </button>
+          )}
           {canManageUsers && (
             <button
               onClick={() => navigate('/user-management')}
@@ -117,29 +128,60 @@ const DashboardView: React.FC = () => {
         </div>
       </div>
 
-      {/* Modular Workspace Frame */}
-      {canViewPayroll ? (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-zen-border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-14 h-14 rounded-2xl bg-zen-matcha/15 border border-zen-matcha/30 flex items-center justify-center text-zen-moss shrink-0">
-              <Wallet className="w-7 h-7" />
+      {/* Modular Workspace Frames */}
+      {canViewPayroll || canViewAttendance ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+          {/* Card: View Payroll */}
+          {canViewPayroll && (
+            <div className="bg-white rounded-3xl p-6 border border-zen-border shadow-xs flex flex-col justify-between space-y-5">
+              <div className="flex items-start space-x-4">
+                <div className="w-13 h-13 rounded-2xl bg-zen-matcha/15 border border-zen-matcha/30 flex items-center justify-center text-zen-moss shrink-0">
+                  <Wallet className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zen-charcoal font-serif">
+                    View Payroll (Slip Gaji)
+                  </h3>
+                  <p className="text-xs text-zen-charcoal/60 mt-0.5 leading-relaxed">
+                    Pantau rincian slip gaji, Take Home Pay (THP), komisi, serta absensi (cuti, alpa, keterlambatan) Anda per periode.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/payroll')}
+                className="w-full py-2.5 px-4 rounded-2xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-xs transition-all active:scale-95"
+              >
+                <Wallet className="w-4 h-4" />
+                <span>Buka Slip Gaji</span>
+              </button>
             </div>
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-zen-charcoal font-serif">
-                Modul Operasional: View Payroll (Slip Gaji)
-              </h3>
-              <p className="text-xs text-zen-charcoal/60 mt-0.5 leading-relaxed">
-                Pantau rincian slip gaji, Take Home Pay (THP), komisi, serta absensi (cuti, alpa, keterlambatan) Anda per periode.
-              </p>
+          )}
+
+          {/* Card: Lihat Absensi */}
+          {canViewAttendance && (
+            <div className="bg-white rounded-3xl p-6 border border-zen-border shadow-xs flex flex-col justify-between space-y-5">
+              <div className="flex items-start space-x-4">
+                <div className="w-13 h-13 rounded-2xl bg-zen-sand/30 border border-zen-sand/50 flex items-center justify-center text-zen-moss shrink-0">
+                  <CalendarCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-zen-charcoal font-serif">
+                    Lihat Absensi
+                  </h3>
+                  <p className="text-xs text-zen-charcoal/60 mt-0.5 leading-relaxed">
+                    Lihat log absensi harian finger (Absen Masuk dan Absen Keluar) dengan filter rentang 1 - 14 hari.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/attendance')}
+                className="w-full py-2.5 px-4 rounded-2xl bg-zen-moss hover:bg-zen-moss/90 text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-xs transition-all active:scale-95"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span>Buka Log Absensi</span>
+              </button>
             </div>
-          </div>
-          <button
-            onClick={() => navigate('/payroll')}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-zen-matcha hover:bg-zen-moss text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-xs transition-all active:scale-95 shrink-0"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Buka Slip Gaji</span>
-          </button>
+          )}
         </div>
       ) : (
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-zen-border shadow-xs text-center space-y-4">
@@ -298,6 +340,21 @@ const PayrollGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   return <>{children}</>;
 };
 
+/**
+ * Route Guard for Attendance:
+ * Superuser (Role 8) is excluded and redirected to /dashboard.
+ * Non-Superusers must be approved and have a valid employee code.
+ */
+const AttendanceGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isSuperuser, canViewAttendance } = useAuth();
+
+  if (isSuperuser || !canViewAttendance) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -356,6 +413,20 @@ export const App: React.FC = () => {
                   <PayrollGuard>
                     <PayrollPage />
                   </PayrollGuard>
+                </AppShellLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Operational Module: Lihat Absensi (Hidden for Superuser, available to approved staff with kodekaryawan) */}
+          <Route
+            path="/attendance"
+            element={
+              <ProtectedRoute>
+                <AppShellLayout>
+                  <AttendanceGuard>
+                    <AttendancePage />
+                  </AttendanceGuard>
                 </AppShellLayout>
               </ProtectedRoute>
             }
