@@ -1,10 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || 'https://ihdlwogvjfgawgsalgng.supabase.co';
+export const SUPABASE_URL: string = import.meta.env.VITE_SUPABASE_URL?.trim() || '';
+export const SUPABASE_ANON_KEY: string = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || '';
 
-export const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_KobV2o95Ymfem77b4zVBJg_E_onldRD';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    '[Zen Security Alert] Environment variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be provided via .env or Coolify build arguments.'
+  );
+}
 
 /**
  * Supabase Client configured with permanent localStorage session persistence,

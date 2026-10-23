@@ -17,9 +17,9 @@ build/
 # Database & SQL files
 *.sql
 
-# Internal project documentation (Sensitive architectural summaries)
-docs/
-docs/**
+# Internal project documentation
+docs/*
+!docs/DEPLOY_TO_COOLIFY_INTERNALAPP.md
 
 # Internal antigravity IDE metadata
 .antigraviy/

@@ -121,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentTab, onTabChange }) => 
       <div className="p-3.5 rounded-2xl bg-zen-linen border border-zen-border/70">
         <div className="flex items-center space-x-2 text-zen-moss mb-1">
           <Sparkles className="w-4 h-4" />
-          <span className="text-xs font-bold">Zen Super-App PWA</span>
+          <span className="text-xs font-bold">{import.meta.env.VITE_APP_NAME || 'Zen Super-App PWA'}</span>
         </div>
         <p className="text-[11px] text-zen-charcoal/70 leading-relaxed">
           Dirancang khusus untuk operasional staf gerai & holding Zen Family Spa.
