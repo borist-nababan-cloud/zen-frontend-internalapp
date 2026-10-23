@@ -13,6 +13,7 @@ export interface UserProfile {
   role_name?: string;
   kodekaryawan?: string;
   namakaryawan?: string;
+  idkaryawan?: string;
   kode_outlet?: string;
   name_outlet?: string;
   departemen?: string;
@@ -34,6 +35,7 @@ export interface AuthContextType {
   canManageUsers: boolean;
   canViewPayroll: boolean;
   canViewAttendance: boolean;
+  canViewCommission: boolean;
   signInWithGoogle: () => Promise<void>;
   signInWithEmailOtp: (email: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -67,14 +69,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (uProfData && !uProfError) {
         let namakaryawan: string | undefined = undefined;
+        let idkaryawan: string | undefined = undefined;
+        let empDepartemen: string | undefined = undefined;
+
         if (uProfData.kodekaryawan) {
           const { data: empData } = await supabase
             .from('ot_hrd_karyawan_info')
-            .select('namakaryawan')
+            .select('namakaryawan, idkaryawan, departemen')
             .eq('kodekaryawan', uProfData.kodekaryawan)
             .maybeSingle();
-          if (empData?.namakaryawan) {
-            namakaryawan = empData.namakaryawan;
+          if (empData) {
+            if (empData.namakaryawan) namakaryawan = empData.namakaryawan;
+            if (empData.idkaryawan) idkaryawan = empData.idkaryawan;
+            if (empData.departemen) empDepartemen = empData.departemen;
           }
         }
 
@@ -102,9 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role_name: roleNameStr,
           kodekaryawan: uProfData.kodekaryawan || undefined,
           namakaryawan: namakaryawan,
+          idkaryawan: idkaryawan || undefined,
           kode_outlet: uProfData.kode_outlet || undefined,
           name_outlet: nameOutletStr,
-          departemen: uProfData.departemen || undefined,
+          departemen: empDepartemen || uProfData.departemen || undefined,
           approval_status: (uProfData.approval_status as any) || 'UNLINKED',
           is_active: !!uProfData.is_active,
           rejected_reason: uProfData.rejected_reason,
@@ -405,11 +413,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isOutletAdmin = profile?.role_user === 6 || profile?.user_role === 6;
   const canManageUsers = isSuperuser || isOutletAdmin;
 
-  // View Payroll & Attendance Rules:
-  // Superuser (Role 8) does NOT see "View Payroll" and "Lihat Absensi".
+  // View Payroll, Attendance & Commission Rules:
+  // Superuser (Role 8) does NOT see "View Payroll", "Lihat Absensi", and "Lihat Komisi".
   // Other roles (including Outlet Admin Role 6, Staff Role 12, etc.) can access if they have kodekaryawan and approval_status = 'APPROVED'.
   const canViewPayroll = !isSuperuser && profile?.approval_status === 'APPROVED' && !!profile?.kodekaryawan;
   const canViewAttendance = canViewPayroll;
+  const canViewCommission = canViewPayroll;
 
   return (
     <AuthContext.Provider
@@ -425,6 +434,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         canManageUsers,
         canViewPayroll,
         canViewAttendance,
+        canViewCommission,
         signInWithGoogle,
         signInWithEmailOtp,
         signOut,

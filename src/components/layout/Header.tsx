@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { LogIn, LogOut, Shield, ChevronDown, Users, Home, Wallet, CalendarCheck } from 'lucide-react';
+import { LogIn, LogOut, Shield, ChevronDown, Users, Home, Wallet, CalendarCheck, Coins } from 'lucide-react';
 
 interface HeaderProps {
   currentTab?: string;
@@ -8,7 +8,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
-  const { user, profile, loading, canManageUsers, canViewPayroll, canViewAttendance, signInWithGoogle, signOut } = useAuth();
+  const { user, profile, loading, canManageUsers, canViewPayroll, canViewAttendance, canViewCommission, signInWithGoogle, signOut } = useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const navbarTitle = import.meta.env.VITE_NAVBAR_TITLE || 'ZEN OPERATIONAL';
@@ -193,6 +193,21 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onTabChange }) => {
                         >
                           <CalendarCheck className="w-4 h-4 mr-2.5 text-zen-moss" />
                           Lihat Absensi
+                        </button>
+                      )}
+
+                      {canViewCommission && (
+                        <button
+                          onClick={() => {
+                            setDropdownOpen(false);
+                            onTabChange?.('commission');
+                          }}
+                          className={`w-full flex items-center px-4 py-2.5 text-xs font-semibold hover:bg-zen-linen transition-colors ${
+                            currentTab === 'commission' ? 'text-zen-moss bg-zen-linen/60' : 'text-zen-charcoal'
+                          }`}
+                        >
+                          <Coins className="w-4 h-4 mr-2.5 text-zen-moss" />
+                          Lihat Komisi
                         </button>
                       )}
                     </div>
